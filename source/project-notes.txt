@@ -1,0 +1,127 @@
+
+Wordpress website hosting on EC2 with RDS with LAMP stack (Linux Apache MySQL PHP)
+==========================================
+
+--> Launch a Amazon Linux 2023 image EC2 instance
+--> Create a RDS MySQL Engine (Private= Public Access NO) - with testdb database
+--> Allow MySQL (3306) in the RDS security group only from the EC2 security group. Do not allow MySQL from anywhere.
+
+=============== MySQL Client =======================
+
+--> Install MySQL client
+
+dnf install -y mariadb105
+
+--> Export mysql endpoint as MySQL_HOST Variable, 
+
+export MYSQL_HOST=<RDS_ENDPOINT>
+
+
+====================== Connect to RDS and create DB =========================
+
+--> Connect to RDS mysql to create required database and users
+
+mysql -h <RDS_ENDPOINT> -P 3306 -u admin -p
+
+--> Create a database 
+
+CREATE DATABASE wordpress;
+CREATE USER 'wpuser' IDENTIFIED BY '<DB_PASSWORD>';
+GRANT ALL PRIVILEGES ON wordpress.* TO wpuser;
+FLUSH PRIVILEGES;
+Exit
+=======================================================================
+Now Install and configure apache
+======================================================================
+
+sudo yum install -y httpd
+
+sudo service httpd start
+
+Download a wordpress template and unzip the wordpress
+
+wget https://wordpress.org/latest.tar.gz
+
+tar -xzf latest.tar.gz
+
+ls
+
+cd wordpress
+
+--> create a wp-config file from sample file already provided
+
+cp wp-config-sample.php wp-config.php
+
+cat wp-config.php 
+
+--> edit the wp-config.php file to point to database
+
+vi wp-config.php
+
+--> Replace the Database_name_here , "username_here", "password_here" and "rds-endpoint-name" with valid info
+
+// ** MySQL settings - You can get this info from your web host ** //
+/** The name of the database for WordPress */
+define( 'DB_NAME', 'wordpress' );
+
+/** MySQL database username */
+define( 'DB_USER', '<DB_USERNAME>' );
+
+/** MySQL database password */
+define( 'DB_PASSWORD', '<DB_PASSWORD>' );
+
+/** MySQL hostname */
+define( 'DB_HOST', '<RDS_ENDPOINT>' );
+
+--> Now go to below link and it provides some information to update the wp-config file. It looks like below shared one.
+
+https://api.wordpress.org/secret-key/1.1/salt/ --> open this in browser , it will generate few tokens and replace in this file
+
+define('AUTH_KEY',         '<GENERATE_WORDPRESS_SECRET>');
+define('SECURE_AUTH_KEY',  '<GENERATE_WORDPRESS_SECRET>');
+define('LOGGED_IN_KEY',    '<GENERATE_WORDPRESS_SECRET>');
+define('NONCE_KEY',        '<GENERATE_WORDPRESS_SECRET>');
+define('AUTH_SALT',        '<GENERATE_WORDPRESS_SECRET>');
+define('SECURE_AUTH_SALT', '<GENERATE_WORDPRESS_SECRET>');
+define('LOGGED_IN_SALT',   '<GENERATE_WORDPRESS_SECRET>');
+define('NONCE_SALT',       '<GENERATE_WORDPRESS_SECRET>');
+
+--> Now install dependencies
+
+dnf install -y php8.4 php-mysqlnd
+
+--> come back to home directory and copy all content to /var/www/html, Then restart the service.
+
+cd /home/ec2-user
+
+sudo cp -a wordpress/. /var/www/html/
+
+sudo service httpd restart
+
+systemctl enable httpd
+
+place public ip to the browser : it ask for username and password and install wordpress
+
+IP/wp-admin --> for admin page
+Just IP for website
+
+
+==============================
+
+RDS Blue Green Deployment
+
+Setup another EC2 instance with same application 
+   (either manual(skip database creation steps))
+   (create a AMI(wordpressAMI) and launch EC2 instance)
+Create a Target Group - health check / or readme.html or index.php
+Create a Load Balancer
+
+Create a Launch Template while selecting AMI select WordpressAMI
+Create a ASG with Launch Template
+
+Access application using ALB
+
+
+
+
+
